@@ -1,6 +1,8 @@
 (ns parser-demo.api
   (:refer-clojure
-   :exclude [char + range or * cat]))
+   :exclude [char + range or * cat take
+             #_
+             take-while]))
 
 (set! *warn-on-reflection* true)
 
@@ -25,6 +27,37 @@
     (when-let [c (first chars)]
       (when (<= (int c1) (int c) (int c2))
         [c (next chars)]))))
+
+(defn excact [string]
+  (let [len (count string)]
+    (fn [chars]
+      (loop [i 0
+             chars chars]
+        (if (= i len)
+          [string chars]
+          (when-let [c (first chars)]
+            (when (= c (get string i))
+              (recur (inc i) (next chars)))))))))
+
+(defn skip
+  ([]
+   (fn [chars]
+     (when-let [c (first chars)]
+       [c (next chars)])))
+  ([n]
+   (fn [chars]
+     (loop [i 0
+            acc []
+            chars chars]
+       (if (= i n)
+         [acc chars]
+         (when-let [c (first chars)]
+           (recur (inc i)
+                  (conj acc c)
+                  (next chars))))))))
+
+;; take-while
+;; take-until
 
 (defn * [p]
   (fn [chars]
@@ -60,6 +93,8 @@
               (when-let [[i chars] (parser chars)]
                 [[tag i] chars]))
             pairs))))
+
+;; ncat nor
 
 (defn cat [& tag-parser]
   (assert (-> tag-parser count even?)
