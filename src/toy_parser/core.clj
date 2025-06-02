@@ -1,4 +1,4 @@
-(ns parser-demo.core
+(ns toy-parser.core
   (:require
    [clojure.string :as str])
   (:import
@@ -7,33 +7,7 @@
 (set! *warn-on-reflection* true)
 
 
-;;
-;; ------------- dummy parser
-;;
-
-(defn parse-expr [string]
-  (-> string
-      (str/replace #"[()]" "")
-      (str/split #"\s+")))
-
-
-(defn to-infix [parsed]
-  (let [stack (new Stack)]
-    (doseq [item parsed]
-      (case item
-        ("+" "-" "*" "/")
-        (let [op2 (.pop stack)
-              op1 (.pop stack)]
-          (.push stack (format "(%s %s %s)" op1 item op2)))
-        (.push stack item)))
-    (.pop stack)))
-
-
-;;
-;; --------------- combinator parser
-;;
-
-;; postfix grammar
+;; postfix grammar example
 ;; A B + C *
 
 ;; number
