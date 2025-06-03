@@ -88,8 +88,8 @@
   (fn [chars]
     (loop [acc []
            chars chars]
-      (if-let [[i chars] (p chars)]
-        (recur (conj acc i)
+      (if-let [[r chars] (p chars)]
+        (recur (conj acc r)
                chars)
         [acc chars]))))
 
@@ -99,11 +99,11 @@
   "
   [p]
   (fn [chars]
-    (when-let [[i chars] (p chars)]
-      (loop [acc [i]
+    (when-let [[r chars] (p chars)]
+      (loop [acc [r]
              chars chars]
-        (if-let [[i chars] (p chars)]
-          (recur (conj acc i)
+        (if-let [[r chars] (p chars)]
+          (recur (conj acc r)
                  chars)
           [acc chars])))))
 
@@ -114,8 +114,8 @@
   "
   [p]
   (fn [chars]
-    (if-let [[i chars] (p chars)]
-      [i chars]
+    (if-let [[r chars] (p chars)]
+      [r chars]
       [nil chars])))
 
 
@@ -127,8 +127,8 @@
   [& parsers]
   (fn [chars]
     (some (fn [p]
-            (when-let [[i chars] (p chars)]
-              [i chars]))
+            (when-let [[r chars] (p chars)]
+              [r chars]))
           parsers)))
 
 
@@ -143,8 +143,8 @@
   (let [pairs (partition 2 tag-parser)]
     (fn [chars]
       (some (fn [[tag parser]]
-              (when-let [[i chars] (parser chars)]
-                [[tag i] chars]))
+              (when-let [[r chars] (parser chars)]
+                [[tag r] chars]))
             pairs))))
 
 
@@ -159,10 +159,10 @@
            parsers parsers
            acc []]
       (if-let [p (first parsers)]
-        (when-let [[i chars] (p chars)]
+        (when-let [[r chars] (p chars)]
           (recur chars
                  (next parsers)
-                 (conj acc i)))
+                 (conj acc r)))
         [acc chars]))))
 
 
@@ -180,10 +180,10 @@
              pairs pairs
              acc []]
         (if-let [[tag parser] (first pairs)]
-          (when-let [[i chars] (parser chars)]
+          (when-let [[r chars] (parser chars)]
             (recur chars
                    (next pairs)
-                   (conj acc [tag i])))
+                   (conj acc [tag r])))
           [acc chars])))))
 
 
@@ -197,8 +197,8 @@
   (fn [chars]
     (loop [acc []
            chars chars]
-      (when-let [[i chars] (p chars)]
-        (let [acc (conj acc i)]
+      (when-let [[r chars] (p chars)]
+        (let [acc (conj acc r)]
           (if-let [[_ chars] (p-sep chars)]
             (recur acc chars)
             [acc chars]))))))
