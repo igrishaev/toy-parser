@@ -1,44 +1,241 @@
-# parser-demo
+# Toy Parser
 
-FIXME: description
+A simple, immutable combinator parser for educational purpose.
 
-## Installation
+The `api` namespace provides a number of functions to build parsers. Each parser
+is a function accepting parameters and returning a parsing function. The parsing
+function is always called with a sequence of characters. The result is either a
+vector `[result, chars-rest]`, where:
 
-Download from http://example.com/FIXME.
+- `result` is what the parser has taken from the characters sequence;
+- `chars-rest` is the rest of the initial sequence of characters.
 
-## Usage
+Should a parser fail, it turns nil. Not so informative but it's up to you how to
+improve it.
 
-FIXME: explanation
+Keep in mind, this is **not a library** but rather an example of excercise
+students usually do. Surely there is ChatGPT for that, but I hope you'll want to
+do it by your own.
 
-    $ java -jar parser-demo-0.1.0-standalone.jar [args]
+The parser ships two demos (demo1 and demo2) with examples how to parse postfix and
+infix notations.
 
-## Options
+# A Small Example Of Infix Notation:
 
-FIXME: listing of options this app accepts.
+~~~clojure
+(ns toy-parser.demo1
+  (:require
+   [toy-parser.api :as p]))
 
-## Examples
+;;
+;; Parse a simple infix notation fragment
+;; like '1 2 3 + 3 1 foo -'
+;;
 
-...
+(def p-int
+  ;; very naive
+  (p/+ (p/range \0 \9)))
 
-### Bugs
+(def p-var
+  (p/+ (p/range \a \z)))
 
-...
+(def p-operator
+  (p/nor :minus (p/char \-)
+         :plus (p/char \+)
+         :times (p/char \*)
+         :div (p/char \\)))
 
-### Any Other Sections
-### That You Think
-### Might be Useful
+(def p-operand
+  (p/nor :int p-int
+         :var p-var))
 
-## License
+(def p-item
+  (p/nor :operand p-operand
+         :operator p-operator))
 
-Copyright © 2025 FIXME
+(def p-ws
+  (p/+ (p/enum \space \r \n \t)))
 
-This program and the accompanying materials are made available under the
-terms of the Eclipse Public License 2.0 which is available at
-http://www.eclipse.org/legal/epl-2.0.
+(def p-expression
+  (p/sep p-item p-ws))
 
-This Source Code may also be made available under the following Secondary
-Licenses when the conditions for such availability set forth in the Eclipse
-Public License, v. 2.0 are satisfied: GNU General Public License as published by
-the Free Software Foundation, either version 2 of the License, or (at your
-option) any later version, with the GNU Classpath Exception which is available
-at https://www.gnu.org/software/classpath/license.html.
+
+(defn parse-postfix [string]
+  (-> string
+      (str/trim)
+      (seq)
+      (p-expression)))
+
+(parse-postfix "1 2 3 + 3 1 foo -")
+
+[[:operand [:int [\1]]]
+ [:operand [:int [\2]]]
+ [:operand [:int [\3]]]
+ [:operator [:plus \+]]
+ [:operand [:int [\3]]]
+ [:operand [:int [\1]]]
+ [:operand [:var [\f \o \o]]]
+ [:operator [:minus \-]]]
+~~~
+
+Now let's wrap it back:
+
+~~~clojure
+(defn render-postfix [parsed]
+  (str/trim
+   (reduce
+    (fn [acc [tag inner]]
+      (case tag
+        :operand
+        (let [[tag chars] inner]
+          (case tag
+            (:int :var)
+            (str acc (apply str (-> inner second)) \space)))
+        :operator
+        (str acc (-> inner second) \space)))
+    ""
+    parsed)))
+
+(render-postfix
+   [[:operand [:int [\1]]]
+    [:operand [:int [\2]]]
+    [:operand [:int [\3]]]
+    [:operator [:plus \+]]
+    [:operand [:int [\3]]]
+    [:operand [:int [\1]]]
+    [:operand [:var [\f \o \o]]]
+    [:operator [:minus \-]]])
+
+"1 2 3 + 3 1 foo -"
+~~~
+
+## Postfix Notation
+
+~~~clojure
+(ns toy-parser.demo2
+  (:require
+   [clojure.string :as str]
+   [toy-parser.api :as p]))
+
+;;
+;; Parse a complex infix notation like
+;; (a + b) * (c / 3) + (1 * (a - b))
+;;
+;;
+;; expression
+;;   el ws? operator ws? expression
+;;   el
+;;
+;; el
+;;   group
+;;   operand
+;;
+;; group
+;;   ( ws? expression ws? )
+;;
+;;  operand
+;;    var
+;;    int
+;;
+;; operator
+;;   -
+;;   +
+;;   *
+;;   /
+
+
+(def p-int
+  (p/+ (p/range \0 \9)))
+
+(def p-var
+  (p/+ (p/range \a \z)))
+
+
+(def p-operand
+  (p/nor :int p-int
+         :var p-var))
+
+(def p-operator
+  (p/nor :minus (p/char \-)
+         :plus (p/char \+)
+         :times (p/char \*)
+         :div (p/char \\)))
+
+(def p-ws?
+  (p/* (p/enum \space \r \n \t)))
+
+;; used for recursive declaration
+(declare p-expr)
+
+(def p-group
+  (p/ncat :lparen (p/char \()
+          :ws p-ws?
+          :expr (var p-expr)
+          :ws p-ws?
+          :rparen (p/char \))))
+
+(def p-el
+  (p/nor :group p-group
+         :operand p-operand))
+
+
+(def p-expr
+  (p/nor :triple (p/ncat :el p-el
+                         :ws p-ws?
+                         :operator p-operator
+                         :ws p-ws?
+                         ;; will be an actual parser later
+                         :expr (var p-expr))
+         :el p-el))
+
+
+(defn parse-infix [string]
+  (p-expr string))
+
+(parse-infix "(a + b) * (b - (a + 42))")
+
+[:triple
+ [[:el
+   [:group
+    [[:lparen \(]
+     [:ws []]
+     [:expr
+      [:triple
+       [[:el [:operand [:var [\a]]]]
+        [:ws [\space]]
+        [:operator [:plus \+]]
+        [:ws [\space]]
+        [:expr [:el [:operand [:var [\b]]]]]]]]
+     [:ws []]
+     [:rparen \)]]]]
+  [:ws [\space]]
+  [:operator [:times \*]]
+  [:ws [\space]]
+  [:expr
+   [:el
+    [:group
+     [[:lparen \(]
+      [:ws []]
+      [:expr
+       [:triple
+        [[:el [:operand [:var [\b]]]]
+         [:ws [\space]]
+         [:operator [:minus \-]]
+         [:ws [\space]]
+         [:expr
+          [:el
+           [:group
+            [[:lparen \(]
+             [:ws []]
+             [:expr
+              [:triple
+               [[:el [:operand [:var [\a]]]]
+                [:ws [\space]]
+                [:operator [:plus \+]]
+                [:ws [\space]]
+                [:expr [:el [:operand [:int [\4 \2]]]]]]]]
+             [:ws []]
+             [:rparen \)]]]]]]]]
+      [:ws []]
+      [:rparen \)]]]]]]]
+~~~

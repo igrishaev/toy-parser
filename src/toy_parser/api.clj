@@ -1,13 +1,8 @@
 (ns toy-parser.api
   (:refer-clojure
-   :exclude [char + range or * cat take
-             #_
-             take-while]))
+   :exclude [char + range or * cat take chars]))
 
 (set! *warn-on-reflection* true)
-
-(alias 'cc 'clojure.core)
-;; (alias 'p 'toy-parser.api)
 
 
 (defn char
@@ -84,8 +79,6 @@
                   (conj acc c)
                   (next chars))))))))
 
-;; take-while
-;; take-until
 
 (defn *
   "
@@ -209,39 +202,3 @@
           (if-let [[_ chars] (p-sep chars)]
             (recur acc chars)
             [acc chars]))))))
-
-;; -------
-
-
-(def WS_CHARS
-  #{\space \r \n \t \b \f})
-
-(def ws
-  (+ (apply enum WS_CHARS)))
-
-(def ws?
-  (* (apply enum WS_CHARS)))
-
-;; -------
-
-
-(def p-int
-  (p/+ (p/range \0 \9)))
-
-(def elem-sep
-  (p/cat :ws ws? :comma (p/char \,) :ws ws?))
-
-(def array
-  (p/or :array-empty
-        (p/cat :ws ws?
-               :lparen (p/char \[)
-               :ws ws?
-               :rparen (p/char \]))
-
-        :array-items
-        (p/cat :ws ws?
-               :lparen (p/char \[)
-               :ws ws?
-               :elements (p/sep p-int elem-sep)
-               :ws ws?
-               :rparen (p/char \]))))
